@@ -6,26 +6,39 @@
 #define SCREEN_HEIGHT 600
 #define true 1
 #define false 0
-
-int init_sdl(void);
-int load_assets(void);
-void initialize_players(void);
-void game_loop(void);
-void handle_events(SDL_Event *e);
-void update_players();
-void close();
-int draw();
-
 struct player
 {
     struct SDL_Rect rect;
     int y_vel;
 };
 
+struct ball
+{
+    struct SDL_Texture *texture;
+    int x;
+    int y;
+    int x_vel;
+    int y_vel;
+};
+
+int init_sdl(void);
+int initialize_ball(void);
+void initialize(void);
+void initialize_players(void);
+int initialize_ball(void);
+int load_texture(char *, SDL_Texture **, int *, int *);
+void game_loop(void);
+void handle_events(SDL_Event *e);
+void update_players();
+int can_move(struct player *);
+void close();
+int draw();
+
 SDL_Window *g_window = NULL;
 SDL_Renderer *g_renderer = NULL;
 struct player g_player1;
 struct player g_player2;
+struct ball g_ball;
 int g_velocity = 10;
 
 main(int argc, char **argv)
@@ -36,9 +49,9 @@ main(int argc, char **argv)
     }
     else
     {
-        if (!load_assets())
+        if (!initialize_ball())
         {
-            puts("Failed to load assets");
+            puts("Failed to initialize the ball.");
         }
         else
         {
@@ -95,9 +108,51 @@ int init_sdl(void)
     return success;
 }
 
-int load_assets()
+int initialize_ball(void)
 {
-    return true;
+
+    char *path = "src/assets/ball.png";
+    SDL_Texture *texture = NULL;
+    int width = 0;
+    int height = 0;
+    if (!load_texture(path, &texture, &width, &height))
+    {
+        puts("An error occurred while loading the ball texture.");
+    }
+    else
+    {
+        // Initialize ball at to the middle of the screen on the left side with a velocity
+        // moving to the right.
+        g_ball = (struct ball){texture, 0, SCREEN_HEIGHT / 2, 10, 0};
+    }
+}
+
+int load_texture(char *path, SDL_Texture **texture, int *width, int *height)
+{
+    SDL_Surface *s = IMG_Load(path);
+    SDL_Texture *t = NULL;
+    if (s == NULL)
+    {
+        printf("Unable to load image %s. SDL_image Error: %s\n", path, IMG_GetError());
+    }
+    else
+    {
+        SDL_SetColorKey(s, SDL_TRUE, SDL_MapRGB(s->format, 0, 0xFF, 0xFF));
+        t = SDL_CreateTextureFromSurface(g_renderer, s);
+        if (t == NULL)
+        {
+            printf("Unable to create texture from %s. SDL Error:%s\n", path, SDL_GetError());
+        }
+        else
+        {
+            *width = s->w;
+            *height = s->h;
+            *texture = t;
+        }
+        SDL_FreeSurface(s);
+    }
+    int success = texture != NULL;
+    return success;
 }
 
 void initialize_players()
@@ -203,20 +258,53 @@ void update_players()
 {
     if (g_player1.y_vel >= 1)
     {
-        g_player1.rect.y += g_player1.y_vel;
+        if (can_move(&g_player1))
+        {
+            g_player1.rect.y += g_player1.y_vel;
+        }
     }
     else if (g_player1.y_vel < 0)
     {
-        g_player1.rect.y += g_player1.y_vel;
+        if (can_move(&g_player1))
+        {
+            g_player1.rect.y += g_player1.y_vel;
+        }
     }
     if (g_player2.y_vel >= 1)
     {
-        g_player2.rect.y += g_player2.y_vel;
+        if (can_move(&g_player2))
+        {
+            g_player2.rect.y += g_player2.y_vel;
+        }
     }
     else if (g_player2.y_vel < 0)
     {
-        g_player2.rect.y += g_player2.y_vel;
+        if (can_move(&g_player2))
+        {
+            g_player2.rect.y += g_player2.y_vel;
+        }
     }
+}
+
+int can_move(struct player *player)
+{
+    // If moving down, since y coordinate grows downward on screen
+    if (player->y_vel > 0)
+    {
+        if (player->rect.y + player->rect.h >= SCREEN_HEIGHT)
+        {
+            return false;
+        }
+    }
+    // moving up, since y coordinate is 0 at top of screen
+    else if (player->y_vel < 0)
+    {
+        if (player->rect.y <= 0)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 int draw()
