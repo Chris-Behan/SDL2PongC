@@ -23,16 +23,13 @@ struct ball
 
 int init_sdl(void);
 int initialize_ball(void);
-void initialize(void);
-void initialize_players(void);
-int initialize_ball(void);
 int load_texture(char *, SDL_Texture **, int *, int *);
 void game_loop(void);
 void handle_events(SDL_Event *e);
 void update_players();
 int can_move(struct player *);
 void close();
-int draw();
+void draw();
 
 SDL_Window *g_window = NULL;
 SDL_Renderer *g_renderer = NULL;
@@ -41,7 +38,7 @@ struct player g_player2;
 struct ball g_ball;
 int g_velocity = 10;
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     if (!init_sdl())
     {
@@ -110,7 +107,6 @@ int init_sdl(void)
 
 int initialize_ball(void)
 {
-
     char *path = "src/assets/ball.png";
     SDL_Texture *texture = NULL;
     int width = 0;
@@ -125,6 +121,7 @@ int initialize_ball(void)
         // moving to the right.
         g_ball = (struct ball){texture, 0, SCREEN_HEIGHT / 2, 10, 0};
     }
+    return 1;
 }
 
 int load_texture(char *path, SDL_Texture **texture, int *width, int *height)
@@ -307,7 +304,7 @@ int can_move(struct player *player)
     return true;
 }
 
-int draw()
+void draw()
 {
     // Draw player 1 read
     SDL_SetRenderDrawColor(g_renderer, 0xFF, 0x00, 0x00, 0xFF);
@@ -315,5 +312,8 @@ int draw()
     // Draw player 2 blue
     SDL_SetRenderDrawColor(g_renderer, 0x00, 0x00, 0xFF, 0xFF);
     SDL_RenderFillRect(g_renderer, &g_player2.rect);
+    // Draw ball
+    SDL_Rect ball_pos = {10, 10, 10, 10};
+    SDL_RenderCopy(g_renderer, g_ball.texture, NULL, &ball_pos);
     SDL_RenderPresent(g_renderer);
 }
