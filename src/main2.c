@@ -37,7 +37,8 @@ int init_sdl(void);
 int initialize_entities(void);
 int load_font(SDL_Texture **, int *, int *);
 int create_initial_score_texture(SDL_Texture **);
-int create_score_texture(SDL_Texture **, SDL_Color, int);
+struct score create_score(int, int, SDL_Color);
+int create_score_texture(SDL_Texture **, SDL_Color, int, int *, int *);
 struct ball create_ball(void);
 void initialize_players(void);
 int load_texture(char *, SDL_Texture **, int *, int *);
@@ -88,7 +89,7 @@ int main(int argc, char **argv)
         struct ball ball = {ball_texture, {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, ball_width, ball_height}, 5, 0};
 
         // Initialize font for score
-        g_font = TTF_OpenFont("src/assets/OpenSans-Bold.ttf", 28);
+        g_font = TTF_OpenFont("src/assets/OpenSans-Bold.ttf", 48);
         if (g_font == NULL)
         {
             printf("Failed to load font, TTF Error: %s", TTF_GetError());
@@ -96,24 +97,16 @@ int main(int argc, char **argv)
         }
 
         // Create player 1 score
-        SDL_Texture *p1_score_texture = NULL;
         SDL_Color red = {255, 0, 0};
-        if (!create_score_texture(&p1_score_texture, red, 0))
-        {
-            puts("Failed to create player 1 initial score texture");
-            return 1;
-        }
-        struct score p1_score = {p1_score_texture, {200, 100, 50, 100}, 0};
+        int p1_score_x = 200;
+        int p1_score_y = 100;
+        struct score p1_score = create_score(p1_score_x, p1_score_y, red);
 
         // Create player 2 score
-        SDL_Texture *p2_score_texture = NULL;
-        SDL_Color blue = {0, 255, 0};
-        if (!create_score_texture(&p2_score_texture, red, 0))
-        {
-            puts("Failed to create player 2 initial score texture");
-            return 1;
-        }
-        struct score p2_score = {p2_score_texture, {SCREEN_WIDTH - 100, 100, 100, 100}, 0};
+        SDL_Color blue = {0, 0, 255};
+        int p2_score_x = SCREEN_WIDTH - 200;
+        int p2_score_y = 100;
+        struct score p2_score = create_score(p2_score_x, p2_score_y, blue);
 
         int width = 20;
         int height = SCREEN_HEIGHT / 4;
@@ -157,7 +150,21 @@ int create_initial_score_texture(SDL_Texture **texture)
     return success;
 }
 
-int create_score_texture(SDL_Texture **texture, SDL_Color color, int score)
+struct score create_score(int x_pos, int y_pos, SDL_Color color)
+{
+    SDL_Texture *score_texture = NULL;
+    int width = 0;
+    int height = 0;
+    if (!create_score_texture(&score_texture, color, 0, &width, &height))
+    {
+        puts("Failed to create score texture");
+        return;
+    }
+    struct score score = {score_texture, {x_pos, y_pos, width, height}, 0};
+    return score;
+}
+
+int create_score_texture(SDL_Texture **texture, SDL_Color color, int score, int *width, int *height)
 {
     int success = true;
     // Score will never exceed 5 chars (4 char + null terminator)
@@ -181,6 +188,8 @@ int create_score_texture(SDL_Texture **texture, SDL_Color color, int score)
         else
         {
             *texture = temp_texture;
+            *width = surface->w;
+            *height = surface->h;
         }
         SDL_FreeSurface(surface);
     }
@@ -198,22 +207,6 @@ int load_font(SDL_Texture **texture, int *width, int *height)
     SDL_Rect message_rect = {0, 0, 100, 100};
     SDL_FreeSurface(text_surface);
     SDL_RenderCopy(g_renderer, message, NULL, &message_rect);
-
-    // g_font = TTF_OpenFont("src/assets/lazy.ttf", 28);
-    // if (g_font == NULL)
-    // {
-    //     printf("Failed to load font, TTF Error: %s", TTF_GetError());
-    //     success = false;
-    // }
-    // else
-    // {
-    //     if (!load_text("test", texture, width, height))
-    //     {
-    //         puts("Failed to load text");
-    //         success = false;
-    //     }
-    // }
-    // return success;
 }
 
 int init_sdl(void)
@@ -570,6 +563,9 @@ void draw(struct ball ball, struct player p1, struct player p2)
     // Draw player 2 blue
     SDL_SetRenderDrawColor(g_renderer, 0x00, 0x00, 0xFF, 0xFF);
     SDL_RenderFillRect(g_renderer, &p2.rect);
+
+    //Draw player 2 score
+    SDL_RenderCopy(g_renderer, p2.score.texture, NULL, &p2.score.rect);
     // Draw ball
     SDL_RenderCopy(g_renderer, ball.texture, NULL, &ball.rect);
 
