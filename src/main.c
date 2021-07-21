@@ -39,30 +39,16 @@ typedef struct
 } Ball;
 
 int init_sdl(void);
-int initialize_entities(void);
-int load_font(SDL_Texture **, int *, int *);
-int create_initial_score_texture(SDL_Texture **);
 Score create_score(int, int, SDL_Color, int);
 int create_score_texture(SDL_Texture **, SDL_Color, int, int *, int *);
 Ball create_ball(void);
-void initialize_players(void);
 int load_texture(char *, SDL_Texture **, int *, int *);
 void game_loop(Ball, Player, Player);
 void handle_events(SDL_Event *e);
-int get_y_velocity(SDL_Event *e, int, int, SDL_Keycode, SDL_Keycode);
 int get_y_pos(int y_pos, int vel, int player_height);
-int updated_ball_x_velocity(Ball, Player, Player);
-int updated_ball_y_velocity(Ball, Player, Player);
 float calculate_y_velocity(SDL_Rect ball, SDL_Rect player);
-int get_new_pos(int, float);
-void handle_player_input(SDL_Event *e);
-int load_text(char *, SDL_Texture **, int *, int *);
-
-void handle_collisions(void);
 void update_ball(Ball *b, Player p1, Player p2);
 void handle_score(Player *, Player *, Ball *);
-void handle_score2(Player *, Player *, Ball *);
-int can_move(Player *);
 void close_sdl();
 void draw();
 
@@ -114,8 +100,8 @@ int main(int argc, char **argv)
         Score p2_score = create_score(p2_score_x, p2_score_y, blue, 0);
 
         // Load audio files
-        Mix_Chunk *p1_sound = Mix_LoadMUS("src/assets/paddle_1_sound.ogg");
-        Mix_Chunk *p2_sound = Mix_LoadMUS("src/assets/paddle_2_sound.ogg");
+        Mix_Chunk *p1_sound = Mix_LoadWAV("src/assets/paddle_1_sound.ogg");
+        Mix_Chunk *p2_sound = Mix_LoadWAV("src/assets/paddle_2_sound.ogg");
 
         int width = 20;
         int height = SCREEN_HEIGHT / 6;
@@ -129,37 +115,6 @@ int main(int argc, char **argv)
         close_sdl(&ball, &player1, &player2);
         return 0;
     }
-}
-
-int create_initial_score_texture(SDL_Texture **texture)
-{
-    int success = true;
-    SDL_Color black = {0, 0, 0};
-    SDL_Surface *surface = TTF_RenderText_Solid(g_font, "0", black);
-    SDL_Texture *temp_texture = NULL;
-    if (surface == NULL)
-    {
-        printf("failed to render initial text to surface, SDL_ttf Error: %s",
-               TTF_GetError());
-        success = false;
-    }
-    else
-    {
-        temp_texture = SDL_CreateTextureFromSurface(g_renderer, surface);
-        if (temp_texture == NULL)
-        {
-            printf(
-                "Unable to create initial score texture from surface, SDL Error: %s",
-                SDL_GetError());
-            success = false;
-        }
-        else
-        {
-            *texture = temp_texture;
-        }
-        SDL_FreeSurface(surface);
-    }
-    return success;
 }
 
 Score create_score(int x_pos, int y_pos, SDL_Color color, int val)
@@ -213,18 +168,6 @@ int create_score_texture(SDL_Texture **texture,
         SDL_FreeSurface(surface);
     }
     return success;
-}
-
-int load_font(SDL_Texture **texture, int *width, int *height)
-{
-    int success = true;
-    TTF_Font *font = TTF_OpenFont("src/assets/OpenSans-Bold.ttf", 28);
-    SDL_Color black = {0, 0, 0};
-    SDL_Surface *text_surface = TTF_RenderText_Solid(font, "hello", black);
-    SDL_Texture *message = SDL_CreateTextureFromSurface(g_renderer, text_surface);
-    SDL_Rect message_rect = {0, 0, 100, 100};
-    SDL_FreeSurface(text_surface);
-    SDL_RenderCopy(g_renderer, message, NULL, &message_rect);
 }
 
 int init_sdl(void)
@@ -510,12 +453,18 @@ void close_sdl(Ball *b, Player *p1, Player *p2)
 int get_y_pos(int y_pos, int vel, int player_height)
 {
     int new_pos = y_pos + vel;
-    // Only update position if in bounds of screen
-    if (new_pos >= 0 && new_pos <= SCREEN_HEIGHT - player_height)
+
+    // Keep player in bounds
+    if (new_pos < 0)
     {
-        return new_pos;
+        new_pos = 0;
     }
-    return y_pos;
+    else if (new_pos > SCREEN_HEIGHT - player_height)
+    {
+        new_pos = SCREEN_HEIGHT - player_height;
+    }
+
+    return new_pos;
 }
 
 void update_ball(Ball *b, Player p1, Player p2)
@@ -571,11 +520,6 @@ float calculate_y_velocity(SDL_Rect ball, SDL_Rect player)
     int multiplier = 5;
     float y_vel = (float)(mid_ball - mid_paddle) / (player.h / 2);
     return y_vel * multiplier;
-}
-
-int get_new_pos(int current, float velocity)
-{
-    return current + velocity;
 }
 
 void draw(Ball ball, Player p1, Player p2)
